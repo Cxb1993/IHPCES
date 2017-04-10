@@ -59,14 +59,14 @@
 %%
 % Regular title as in the article class.
 %
-\title{Data Management and Domain Adjusting Strategies for Volcano Plume Simulation with Parallel SPH Method}
+\title{Data Management and Volcano Plume Simulation with Parallel SPH Method and Dynamic Halo Domains}
 
 % \titlerunning{} has to be set to either the main title or its shorter
 % version for the running heads. When processed by
 % EasyChair, this command is mandatory: a document without \titlerunning
 % will be rejected by EasyChair
 
-\titlerunning{Data Management for Volcano Plume Simulation with SPH}
+\titlerunning{Data Management and Volcano Plume Simulation with SPH}
 
 % Authors are joined by \and. Their affiliations are given by \inst, which indexes into the list
 % defined using \institute
@@ -106,12 +106,17 @@ University at Buffalo, Buffalo, New York, U.S.A.\\
 \keywords{SPH, MPI, data management, domain decomposition, domain adjusting, volcano plume}
 
 \begin{abstract}
-This paper presents data management and domain adjusting strategies for implementing smoothed particle hydrodynamics (SPH) method to simulate volcano plumes with parallel processing (using the message passing interface (MPI)). 
-A background grid is adopted to reduce neighbor searching cost and to decompose the domain. The Space Filing Curve (SFC) orderings are used to assign unique identifier to background grid entity. Time-dependent SFC based indices are assigned to particles to guarantee uniqueness of the identifier.  
+This paper presents data management and strategies for implementing smoothed particle hydrodynamics (SPH) method to simulate volcano plumes. 
+These simulations require a careful definition of the domain of interest and multi-phase material involved in the flow, both of which change over time and involve 
+transport over vast distances in a short time.
+Computational strategies are developed to overcome these challenges by building mechanisms for efficient  creation and deletion of particles for simulation,
+parallel processing (using the message passing interface (MPI)) and a dynamically defined halo domain (a domain that "optimally" captures all the material involved in the flow). 
+A background grid is adopted to reduce neighbor search costs and to decompose the domain. A Space Filing Curve (SFC) based ordering is
+ used to assign unique identifiers to background grid entities and particles. Time-dependent SFC based indices are assigned to particles to guarantee uniqueness of the identifier.  
 Both particles and background grids are managed by hash tables which can ensure quick and flexible access.
-A SFC based three dimensional (3D) domain decomposition and a dynamic load balancing strategy are implemented to ensure good load balance. 
-Several strategies are developed to improve performance: adjustable computational domain, calibrated particle weight and optimized work load check interval. 
-Numerical tests show that our code has good scalability. Computational cost is also greatly reduced by adopting performance improvement strategies presented in this paper. 
+An SFC based three dimensional (3D) domain decomposition and a dynamic load balancing strategy are implemented to ensure good load balance. 
+Several strategies are developed to improve performance: dynamic halo domains, calibrated particle weight and optimized work load check intervals. 
+Numerical tests show that our code has good scalability and performance. %Computational cost is also greatly reduced by adopting performance improvement strategies presented in this paper. 
 The strategies described in this paper can be further applied to many other implementations of mesh-free methods, especially those implementations that require flexibility in adding and deleting of particles.
 \end{abstract}
 
@@ -130,7 +135,7 @@ The strategies described in this paper can be further applied to many other impl
 %------------------------------------------------------------------------------
 \section{Introduction}
 \label{sect:introduction}
-SPH is a mesh-free scheme, initially developed for astrophysical applications and later extended to computational fluid mechanics. SPH has several features that match well with demands in geophysical flow simulation. It is easier in SPH to include multiple phases and handle complicated geometry and free boundaries. The first implementation of SPH in volcanology was presented by Bursik \cite{bursik2003smoothed} with more developed recently (eg.\cite{ haddad2016smoothed}). The development  of a volcano plume (see Fig. \ref{fig:Plume}) is essentially a multiphase turbulent ejection mixing process accompanied by microphysics phenomena like phase change of water, aggregation, reaction, etc. Accurate prediction of such complicated phenomena in a given time window requires resolution (very high particle counts) that can not be accomplished without parallel computing. Imposing  some types of boundary conditions (such as wind field, eruption boundary condition at the vent) requires dynamically adding and removing particles during simulation. This requires an efficient and flexible data management scheme.\\
+Smoothed particle hydrodynamics (SPH) is a mesh-free scheme, initially developed for astrophysical applications and later extended to computational fluid mechanics. SPH has several features that match well with demands in geophysical flow simulation. It is easier in SPH to include multiple phases and handle complicated geometry and free boundaries. The first implementation of SPH in volcanology was presented by Bursik \cite{bursik2003smoothed} with more developed recently (eg.\cite{ haddad2016smoothed}). The development  of a volcano plume (see Fig. \ref{fig:Plume}) is essentially a multiphase turbulent ejection mixing process accompanied by microphysics phenomena like phase change of water, aggregation, reaction, etc. Accurate prediction of such complicated phenomena in a given time window requires resolution (very high particle counts) that can not be accomplished without parallel computing. Imposing  some types of boundary conditions (such as wind field, eruption boundary condition at the vent) requires dynamically adding and removing particles during simulation. This requires an efficient and flexible data management scheme.\\
 Most implementations of the parallel SPH method presented to date are limited to standard SPH and benchmark problems like dam breaks, or relatively
 simple scenarios like breaking-waves, flooding, etc. Work on more complicated implementations is relatively rare. Among existing CPU parallel SPH schemes, most of them focus on neighbor searching algorithms and dynamic load balancing. (eg. \cite{ferrari2009new, crespo2015dualsphysics}). Less attention has been paid to developing more flexible data management schemes. 
 Fortunately, efficient and flexible data management strategies for parallel computing have been successfully implemented in mesh based methods (eg. \cite{laszloffy2000simple} for adaptive hp finite element method (FEM), and \cite{patra2005parallel} for finite volume method (FVM)). Motivated by these techniques developed for mesh based methods, we present a complete framework for parallelizing SPH program with the MPI standard allowing flexible and efficient data access.\\
@@ -138,14 +143,14 @@ Any implementation of SPH requires efficient searching and updating of neighbors
 As for the actual storage of data representing the physical quantities associated to each particle, different strategies have been adopted in existing implementations of SPH. 
 In DualSPHysics\cite{crespo2015dualsphysics}, the physical quantities of each particle (position, velocity, density...) are stored in arrays, and the particles (and the arrays with particle data) are reordered following the order of the cells. It is not flexible enough to add, delete and especially access particles for such fixed-size arrays. Ferrari\cite{ferrari2009new} adopted linked lists using pointers so that particles can be deleted or added during the simulation. Storage problems caused by fixed-size arrays are thereby also eliminated. We adopt hash tables to store pointers to objects of particles and buckets, which give us not only flexibility of deleting and adding of elements, but also quicker access compared with linked lists. A SFC-based index is adopted to give each particle and background bucket an unique identifier -- a strategy known to preserve some locality at minimal cost. The SFC based numbering strategy is further extended to include time step information so that particles added at the same position but different time will have different identifiers. 
 We adopt an easy-programming scheme based on SFC \cite{patra1999efficient} to decompose the domain.\\
-To the best of the author's knowledge, no current implementation of SPH has the feature of adjusting the computational domain based on simulation needs. For volcano plume simulation, this feature will greatly reduce computational cost by avoiding computing of uninfluenced fluids. This feature is accomplished by adding a scan function to monitor the outermost layer of the domain and turn ghost particles to real particles at the proper time.\\
+To the best of the author's knowledge, no current implementation of SPH has the feature of adjusting the computational domain based on simulation needs. For volcano plume simulation, this feature will greatly reduce computational cost by avoiding computing of uninfluenced fluids. This feature is accomplished by adding a scan function to monitor the outermost layer of the domain and turn ghost particles to real particles at the proper time thus effectively defining a halo domain with an almost optimally defined size.\\
 \section{Data Structure and Load Balance}
 \begin{figure*}[!t]
 \centering
 \includegraphics[scale=0.32]{Work_flow}
 \hfil
 \includegraphics[scale=0.32]{Work_flow_adjust}
-\caption{Workflow for SPH code. Figure to the left is the basic workflow. The right figure is the workflow that enables adjustable domain.}
+\caption{Workflow for SPH code. Figure to the left is the basic workflow. The right figure is the workflow that enables dynamic halo domain.}
 \label{fig:Work_flow}
 \end{figure*}
 In SPH, the domain is discretized by particles and the position of each particle is updated at every time step. The physical laws written in the form of partial differential equations need to be transformed into the Lagrangian particle formalism of SPH. Using a kernel function that provides the weighted estimation of the physical properties in the neighborhood of a discrete point (particle), the integral equations are evaluated as sums over neighbor particles. Only particles located within the support of the kernel function will interact. Thus, physical properties associated with the particle are updated based on its neighbors. A neighbor search therefore needs to be carried out before updating physical properties. A basic workflow of our SPH code is shown in Fig. \ref{fig:Work_flow}. We use buckets, which contain all particles associated with a sub-domain (see Fig. \ref{fig:SFC_domain_decomposition}) 
@@ -245,7 +250,7 @@ Figure \ref{fig:SFC_domain_decomposition} shows how the domain is decomposed bas
 Movement of particles, addition of new particles, and adjustments of domain will lead to significant load imbalance between processes. To restore load balance, computational load is monitored at a given interval which is optimized based on numerical experiments. Repartitioning is carried out when load imbalance is larger than a given tolerance.
 \\
 As some of the neighbor particles reside in other partitions, a set of ``guest'' particles and buckets are used to synchronize data across partitions. To minimize communications, data is synchronized only where needed, using non-blocking MPI communications. 
-\section{Adjusting of Domain During Simulation} 
+\section{Dynamic Halo Domain} 
 For plume simulation and similar phenomena, where some fluid ejects into a stationary fluid and gets mixed, the stationary fluid must be represented.
 A lot of CPU time will be spent on computing associated with these stationary particles. If simulation of stationary particles can be avoided, the computational cost will be greatly reduced.
 We propose a simple strategy to add such a feature to our code with low computational cost. We add a scan function to monitor the outermost layer of the domain. When the ejected fluid reaches the boundary of the current domain, pressure ghost particles (light blue particles in the right figure of Fig. \ref{fig:Plume}) will be turned to real particles (red particles in the right figure of Fig. \ref{fig:Plume}) and then add a new layer of pressure ghost particles for pressure boundary conditions. Wall ghost particles (grey particles in the right figure of Fig. \ref{fig:Plume}) will also be added when necessary. The original workflow is modified to enable such a feature. The modified workflow is shown on the right in Fig. \ref{fig:Work_flow}).\\
@@ -255,11 +260,11 @@ As simulation progresses, the ejected fluid will reach a larger area and more an
 A similar scheme is also deployed for buckets resulting in a categorization of buckets. The additional complexity is that potentially involved ghost particles must also be taken into accounted.
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=3.4cm,height=4.0cm]{plume_photo}
+\includegraphics[width=3.4cm,height=3.8cm]{plume_photo}
 \hfil
-\includegraphics[width=5.0cm,height=4.0cm]{Plume_simulation}
+\includegraphics[width=5.0cm,height=3.8cm]{Plume_simulation}
 \hfil
-\includegraphics[width=4.8cm,height=4.0cm]{Boundary_condition}
+\includegraphics[width=4.8cm,height=3.8cm]{Boundary_condition}
 \caption{The left figure shows a plume photo of Sakurajima Volcano eruption, the middle figure shows a typical simulation results with the same input parameters as "Run P1" in reference \cite{suzuki2005numerical}. The right figure is a cross-section view of the computational domain, it illustrates how particles are deployed on different boundaries: red are real particles, dark blue are eruption ghost particles, grey are wall ghost particles, the light blue are pressure ghost particles.}
 \label{fig:Plume}
 \end{figure*}
@@ -303,7 +308,7 @@ Right side figure in Fig \ref{fig:2cases_efficiency} shows the timing of a weak 
 In section \ref{sect:load_balance}, we proposed to use different particle weights for different types of particles when estimate the workload of buckets. The effect of using different particle weight is demonstrated in table \ref{tab:same_diff_particle_weight}. The simulation time is reduced by using different particle weights. However, the amount of time that is reduced is not as significant as we expected. One possible explanation is that real particles are the major population, so the load imbalance caused by assigning improper weight values to ghost particles is small.\\
 The best load balance check interval is calibrated based on a series of simulations with different load balance scan intervals. From 0 - 50 seconds physical time, the interval of 1 second shows a better load balance than interval of 2 seconds. However, for the simulation of 50 - 100 seconds, interval of 2 seconds is better. This implies that loss of load balance accumulates faster and requires a more frequent re-decomposition of domain at the early stages of simulation. This is consistent with the plume development process: the domain grows quickly at the beginning as erupted material ejects into the environment and spreads. Afterwards, the spreading speed of the front edge slows down due to viscosity and momentum exchange leading to slowing down of domain growth. We need to emphasize that, these optimized parameters, including weights of particles and load balance checking interval, are case sensitive and need to be re-calibrated for different applications and hardware architecture.
 %
-\subsection{Domain adjusting}
+\subsection{Effect of dynamic halo domains}
 \begin{figure}
 \CenterFloatBoxes
 \begin{floatrow}
@@ -335,7 +340,7 @@ For the test problem in this paper, the volcano plume finally reaches to a regio
 Figure \ref{fig:adj_vs_no} shows that simulation time of the test problem is greatly reduced when we adopt the domain adjusting strategy in our code.
 \section{Conclusion}
 We developed data management strategies for a MPI-parallel implementation of the SPH method to simulate volcano plumes. Neighbor searching and domain decomposition is based on the background grid. A SFC based index scheme is adopted to identify buckets and time-dependent SFC keys are used as identifiers for particles. 
-Hash tables with external linked lists are adopted for accessing particles and buckets data. Based on calibrated particle weights, a dynamic load balance strategy is developed by checking load balance and re-decomposing the domain at an optimized interval. The performance of the code was further improved by several factors by adjusting the computational domain during simulation. 
+Hash tables with external linked lists are adopted for accessing particles and buckets data. Based on calibrated particle weights, a dynamic load balance strategy is developed by checking load balance and re-decomposing the domain at an optimized interval. The performance of the code was further improved by several factors by adjusting the computational domain during simulation.
 Overall we obtain good scalability and performance.\\
 The flexibility of our data access methodology enables implementing mesh-free methods for solving more complicated problems and using more advanced techniques, such as dynamic particle splitting techniques\cite{vacondio2012accurate, feldman2007dynamic}, which will give higher resolution at the area of interest by splitting one large particle to several smaller ones. The data structure, particle and bucket indexing strategies, domain decomposition, dynamic load balancing method and domain adjusting strategies in this paper can be adopted to other mesh-free methods (not just SPH).
 %------------------------------------------------------------------------------
