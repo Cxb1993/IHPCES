@@ -46,14 +46,17 @@
 %\usetheme{Warsaw}
 
 \usepackage{media9}
+\usepackage{textpos}
 
-\title{Data Management and Volcano Plume Simulation with
+%\setbeamerfont{footline}{size=\fontsize{9}{11}\selectfont}
+
+\title [Volcano Plume Modelling with SPH]{Data Management and Volcano Plume Simulation with
 Parallel SPH Method and Dynamic Halo Domains}
 
 % A subtitle is optional and this may be deleted
 %\subtitle{Optional Subtitle}
 
-\author{
+\author [Zhixuan Cao ect.] {
     Zhixuan Cao\inst{1} \and
     Abani Patra\inst{1}  \and
     Matthew Jones\inst{2}
@@ -83,7 +86,7 @@ University at Buffalo, Buffalo, New York, U.S.A.
 % - Use the \inst command only if there are several affiliations.
 % - Keep it simple, no one is interested in your street address.
 
-\date{7th International Workshop on Advances in High-Performance Computational Earth Sciences: Applications $\&$ Frameworks, 2017}
+\date [IHPCES 2017] {7th International Workshop on Advances in High-Performance Computational Earth Sciences: Applications $\&$ Frameworks, 2017}
 % - Either use conference name or its abbreviation.
 % - Not really informative to the audience, more for people (including
 %   yourself) who are reading the slides online
@@ -96,8 +99,7 @@ University at Buffalo, Buffalo, New York, U.S.A.
 % is a graphic format that can be processed by latex or pdflatex,
 % resp., then you can add a logo as follows:
 
-% \pgfdeclareimage[height=0.5cm]{university-logo}{university-logo-filename}
-% \logo{\pgfuseimage{university-logo}}
+%\pgfdeclareimage[height=0.5cm]{university-logo}{UB_Stacked_SUNY} \logo{\pgfuseimage{university-logo}}
 
 % Delete this, if you do not want the table of contents to pop up at
 % the beginning of each subsection:
@@ -115,6 +117,12 @@ University at Buffalo, Buffalo, New York, U.S.A.
   \titlepage
 \end{frame}
 
+\addtobeamertemplate{frametitle}{}{%
+\begin{textblock*}{350mm}(.80\textwidth,-0.85cm)
+\includegraphics[height=0.75cm,width=2.5cm]{UB_Secondary_SUNY_Small}
+\end{textblock*}}
+
+
 \begin{frame}{Outline}
   \tableofcontents
   % You might wish to add the option [pausesections]
@@ -124,7 +132,7 @@ University at Buffalo, Buffalo, New York, U.S.A.
 % and table of contents.
 \section{Motivation of Choosing SPH}
 \begin{frame}{Motivation of Choosing SPH}
-The development of volcano plume is essentially a multiple phase, turbulent mixing process coupled with heat transfer and other microphysics processes without pre-defined boundaries. SPH (Smoothed particle hydrodynamics) is suitable for such problem for several reasons:
+The development of volcano plume is essentially a multiple phase, turbulent mixing process coupled with heat transfer and other microphysics processes without pre-defined boundaries. SPH (Smoothed particle hydrodynamics), as a mesh-less method, is suitable for such problem for several reasons:
   \begin{itemize}
   \item {
     SPH is able to automatically construct the interface.
@@ -136,7 +144,7 @@ The development of volcano plume is essentially a multiple phase, turbulent mixi
     Adding of new physics and new phases is easier in terms of programming in SPH 
   }
   \item {
-    With very limited global communication, SPH solvers has better scalability 
+    With very limited global communication, SPH solvers are easier to scale up 
   }
   \end{itemize}
 \end{frame}
@@ -258,13 +266,14 @@ independent
 \flushleft
 \includegraphics[width=0.435\textwidth]{../Boundary-condition-eps-converted-to}
 \hfill
-\includegraphics[width=0.445\textwidth]{../Particle_adding_with_link}
+\includegraphics[width=0.445\textwidth]{Particle_adding}
 \end{figure}
 \begin{block}{Time-dependent SFC}
 \begin{equation}
 h_n: [0,1]^n \times \textbf{T} \rightarrow [0,1] \times \textbf{N}
 \end{equation}
-Where $\textbf{T} \subset [0,\infty)$ is the time dimension, and $\textbf{N}=\lbrace 0, 1, 2, 3...\rbrace$.
+Where $\textbf{T} \subset [0,\infty)$ is the time dimension, and $\textbf{N}=\lbrace 0, 1, 2, 3...\rbrace$. \\
+Then the time-dependent key can be expressed as: $(k,n)$
 \end{block}
 \end{frame}
 
@@ -283,9 +292,9 @@ To avoid a non-uniform sparse hash table, only plug the first number, $k$, of th
 \end{frame}
 
 \begin{frame}{Dynamic Load Balance (Weighted particles)}
-The domain is decomposed based on calibrated particle weights.
+The domain is decomposed by cutting SFC of buckets into pieces of equal work load. The work load of each bucket is calculated by summing up weights of all particles contained by that bucket. The work load associated to each particle is calibrated based on profilling data.
 \begin{table}
-\resizebox{\textwidth}{!}{  
+\resizebox{0.9\textwidth}{!}{  
 	  \begin{tabular}{lrrrrrr}
 	    \hline
 	    Step & Cost ($ms$) & Real & wall & eruption & pressure\\
@@ -301,15 +310,15 @@ The domain is decomposed based on calibrated particle weights.
 	  \end{tabular}}
       \label{tab:Computational_cost_steps}
 \end{table}
-
+Compared with uniform particle weight, calibrated particle weights is computationally more efficient.
 \begin{table}
-\resizebox{0.8 \textwidth}{!}{  
+\resizebox{0.7 \textwidth}{!}{  
 	  \begin{tabular}{lrrrr}
 	    \hline
 	    Physical time & 10 s & 20s & 30 s & 40 s \\
 	    \hline
 	    Same weight & 1141.7 & 4119.4 & 10371.0 & 12453.7\\
-	    Different weights & 1108.2 & 4057.0 & 10281.5 & 12166.3 \\
+	    Calibrated weights & 1108.2 & 4057.0 & 10281.5 & 12166.3 \\
 	    \hline
 	  \end{tabular}}
       \label{tab:effect-of-weighted-particle}
@@ -331,12 +340,28 @@ The movement of particles and expansion of computational domain can lead to larg
 \section{Dynamic Halo Domain}
 \begin{frame}{Dynamic Halo Domain}
 A lot of CPU time will be spent
-on computing associated with these stationary particles. If simulation of stationary particles can be avoided, the computational cost will be greatly reduced. 
+on computing associated with these stationary particles. The computational cost will be greatly reduced if the computational domain changes adaptively during simulation. 
+\begin{block}{Our strategy}
+  \begin{itemize}
+  \item {
+    An involvement flag to distinguish different states of involvement
+  }
+  \item {
+    A scan function to monitor the outermost layer of the domain
+  }
+  \item {
+    Shift pressure ghost particles into real particles when necessary
+  }
+  \end{itemize}
+\end{block}
+%
 \begin{figure}
 \flushleft
-\includegraphics[width=0.475\textwidth]{t=120_msfrc}
+\includegraphics[width=0.33\textwidth]{t=66_msfrc}
 \hfill
-\includegraphics[width=0.475\textwidth]{t=120_involved}
+\includegraphics[width=0.33\textwidth]{t=66_bctp}
+\hfill
+\includegraphics[width=0.33\textwidth]{t=66_involved}
 \end{figure}
 \end{frame}
 
@@ -402,7 +427,7 @@ SWCH: switch pressure ghost particles to real. ADPP: add new pressure ghost part
   activate=onclick,
   deactivate=onclick,
   addresource=mssfrc_sml400.mp4,
-  flashvars={source=mssfrc_sml400.mp4 &loop=false}
+  flashvars={source=mssfrc_sml400.mp4 &loop=true}
   ]{}{VPlayer.swf}
 \end{minipage}
 \hfill
@@ -414,7 +439,7 @@ SWCH: switch pressure ghost particles to real. ADPP: add new pressure ghost part
   activate=onclick,
   deactivate=onclick,
   addresource=cut_view_mssfrc_sml400.mp4,
-  flashvars={source=cut_view_mssfrc_sml400.mp4 &loop=false}]
+  flashvars={source=cut_view_mssfrc_sml400.mp4 &loop=true}]
   {}{VPlayer.swf}
 \end{minipage}
 \hfill  
@@ -426,7 +451,7 @@ SWCH: switch pressure ghost particles to real. ADPP: add new pressure ghost part
   activate=onclick,
   deactivate=onclick,
   addresource=cut_view_Involved_sml400.mp4,
-  flashvars={source=cut_view_Involved_sml400.mp4 &loop=false}]
+  flashvars={source=cut_view_Involved_sml400.mp4 &loop=true}]
   {}{VPlayer.swf}
 \end{minipage}
 %  
