@@ -58,7 +58,7 @@ Parallel SPH Method and Dynamic Halo Domains}
 
 \author [Zhixuan Cao ect.] {
     Zhixuan Cao\inst{1} \and
-    Abani Patra\inst{1}  \and
+    Abani Patra\inst{1,3}  \and
     Matthew Jones\inst{2}
     }
 % - Give the names in the same order as the appear in the paper.
@@ -76,11 +76,15 @@ Parallel SPH Method and Dynamic Halo Domains}
   
 \institute [University at Buffalo]{
 \inst{1}
-Department of MAE \\
+Department of Mechanical and Aerospace \\
 University at Buffalo, Buffalo, New York, U.S.A.
 \and
 \inst{2}
 Center for Computational Research \\
+University at Buffalo, Buffalo, New York, U.S.A.
+\and
+\inst{3}
+Computational, Data Sciences \& Eng.,\\
 University at Buffalo, Buffalo, New York, U.S.A.
  }
 % - Use the \inst command only if there are several affiliations.
@@ -130,21 +134,21 @@ University at Buffalo, Buffalo, New York, U.S.A.
 %-----------------------------------------------------
 % Section and subsections will appear in the presentation overview
 % and table of contents.
-\section{Motivation of Choosing SPH}
-\begin{frame}{Motivation of Choosing SPH}
-The development of volcano plume is essentially a multiple phase, turbulent mixing process coupled with heat transfer and other microphysics processes without pre-defined boundaries. SPH (Smoothed particle hydrodynamics), as a mesh-less method, is suitable for such problem for several reasons:
+\section{Motivation for Choosing SPH}
+\begin{frame}{Motivation for Choosing SPH}
+ Volcanic plume development is essentially a multi-phase, turbulent mixing process coupled with heat transfer and other microphysics processes without pre-defined boundaries. SPH (Smoothed particle hydrodynamics), as a mesh-less method, is suitable for such problems for several reasons:
   \begin{itemize}
   \item {
     SPH is able to automatically construct the interface.
   }
   \item {
-    Multiphase is trival for SPH 
+    Multiphase modeling is easily accomplished using SPH 
   }
   \item {
     Adding of new physics and new phases is easier in terms of programming in SPH 
   }
   \item {
-    With very limited global communication, SPH solvers are easier to scale up 
+    With very limited global communication requirements, SPH solvers can scale better for parallel computing than grid based ones.
   }
   \end{itemize}
 \end{frame}
@@ -201,13 +205,13 @@ The development of volcano plume is essentially a multiple phase, turbulent mixi
 %-----------------------------------------------------
 \section{Data Structure and Load Balance}
 \begin{frame}{Paricles and Bucket}
-The most basic data structure of SPH are particles and buckets. Both are need as $C++$ classes.
+The  basic data structures used to support SPH are particles and buckets. %Both are need as $C++$ classes.
 \begin{block}{Particle Class}
-Information that is contained in particle objects can be categorized into six categories.
-Unique ID (key), affiliation, primitive variabls, secondary variables, flags and neighbor information.
+Information that is contained in particle objects :
+Unique ID (key), affiliation, {\bf primary variables, secondary variables}, flags and neighbor information.
 \end{block}
 \begin{block}{Bucket Class}
-Information that is contained in bucket objects can also be categorized into six categories.
+Information that is contained in bucket objects :
 Unique ID (key), affiliation, dimension information, flags, neighbor information and contained particles.
 \end{block}
 \end{frame}
@@ -225,7 +229,7 @@ In SPH any function $A(\textbf{x})$ and gradient of it can be approximated by.
 \end{split} 
 \label{eq:SPH-scalar-function-gradient}
 \end{equation}
-
+$b \in \{ \mbox {particles with overlapping support} \} \subset \{ \mbox {all particles}\}$
 \begin{figure}
 \flushleft
 \includegraphics[width=0.415\textwidth]{Neighor-searching-noBG}
@@ -238,9 +242,9 @@ In SPH any function $A(\textbf{x})$ and gradient of it can be approximated by.
 SFC based key is defined as: $k = h_n (\textbf{x})$, Where $h_n (\textbf{x}): [0,1]^n \rightarrow [0,1]$
 \begin{figure}
 \flushleft
-\includegraphics[width=0.405\textwidth]{../SFC_particles_buckets}
+\includegraphics[width=0.385\textwidth]{../SFC_particles_buckets}
 \hfill
-\includegraphics[width=0.435\textwidth]{../SFC_particles_buckets_partition}
+\includegraphics[width=0.415\textwidth]{../SFC_particles_buckets_partition}
 \end{figure}
 \begin{block}{Features of SFC-based Index}
   \begin{itemize}
@@ -248,14 +252,14 @@ SFC based key is defined as: $k = h_n (\textbf{x})$, Where $h_n (\textbf{x}): [0
     Guaranteed uniqueness of the indexing.
   }
   \item {
-    Generating of index are fast and
+    Generating of indices are fast and
 independent
   }
   \item {
-    Conserve some locality in general
+    Conserve spatial locality in ordering $\rightarrow$ promotes memory locality / {\bf cache reuse}
   }
   \item {
-    It generate a global address space and can be used for domain decomposition
+    Global address space and ordering for use in  domain decomposition
   }
   \end{itemize}
 \end{block}
@@ -494,18 +498,17 @@ SWCH: switch pressure ghost particles to real. ADPP: add new pressure ghost part
     We developed data management strategies for a MPI-parallel implementation of the SPH
 method to simulate volcanic plumes. Acceptable scalability was achieved.
   \item
-    The fexibility of our data access methodology enables implementing mesh-free methods for
-solving more complicated problems and using more advanced techniques, such as dynamic par-
-ticle splitting techniques.
+    The flexibility of our data access methodology enables implementation of  mesh-free methods for
+solving more complicated problems and using more advanced techniques, such as dynamic particle splitting techniques.
   \item
     The data structure, particle and bucket
 indexing strategies, domain decomposition, dynamic load balancing method and domain ad-
-justing strategies in this paper can be adopted to other mesh-free methods (not just SPH).
+justing strategies in this paper can be adopted by other mesh-free methods (not just SPH).
   \end{itemize}
   
   \begin{itemize}
   \item
-    Outlook
+    Current/Future
     \begin{itemize}
     \item
       Better dynamic load balancing strategy.
